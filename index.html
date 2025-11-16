@@ -7,22 +7,39 @@
 		integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU="
 		crossorigin="anonymous"></script>
 	<script>
-		function SubForm (){
-			$.ajax({
-				url:"https://api.apispreadsheets.com/data/p9uq98fjnvBlrqwP/",
-				type:"post",
-				data:$("#myForm").serializeArray(),
-				headers:{
-					accessKey: "94b7d645fe39ecad60b6dd45b1e2b24f",
-					secretKey: "416c62c59615a2a33ec1ddf9167313a9"},
-				success: function(){
-					alert("Form Data Submitted :)")
-				},
-				error: function(){
-					alert("There was an error :(")
-				}
-			});
-		}
+	// override SubForm to use popup instead of alert
+	function SubForm(){
+		$.ajax({
+			url:"https://api.apispreadsheets.com/data/p9uq98fjnvBlrqwP/",
+			type:"post",
+			data:$("#myForm").serializeArray(),
+			headers:{
+				accessKey: "94b7d645fe39ecad60b6dd45b1e2b24f",
+				secretKey: "416c62c59615a2a33ec1ddf9167313a9"},
+			success: function(){ showPopup("Apply voucher success :)", "success"); },
+			error: function(){ showPopup("There was an error :(", "error"); }
+		});
+	}
+
+	function showPopup(message, type){
+		var popup = document.getElementById('jsPopup');
+		var backdrop = document.getElementById('popupBackdrop');
+		if(!popup || !backdrop) return;
+		popup.querySelector('.popup-message').textContent = message;
+		popup.className = 'popup show ' + (type || '');
+		backdrop.className = 'popup-backdrop show';
+		document.body.classList.add('popup-open');
+		clearTimeout(window._popupTimeout);
+		window._popupTimeout = setTimeout(hidePopup, 3000);
+	}
+
+	function hidePopup(){
+		var popup = document.getElementById('jsPopup');
+		var backdrop = document.getElementById('popupBackdrop');
+		if(popup) popup.className = 'popup';
+		if(backdrop) backdrop.className = 'popup-backdrop';
+		document.body.classList.remove('popup-open');
+	}
 	</script>
 	<style>
 		body {
@@ -227,6 +244,18 @@
 			60% { opacity: 1; }
 			100% { opacity: 0; transform: rotate(var(--rot)) translate(var(--dist)) scale(0.5); }
 		}
+
+		/* popup styles */
+		.popup-backdrop{ position: fixed; inset: 0; background: rgba(0,0,0,0.32); opacity: 0; pointer-events: none; transition: opacity .18s ease; z-index: 1000; }
+		.popup-backdrop.show{ opacity: 1; pointer-events: auto; }
+		.popup{ position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%) scale(.98); min-width: 260px; max-width: 92%; background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 18px 40px rgba(12,16,30,0.28); opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease; z-index: 1001; }
+		.popup.show{ opacity: 1; transform: translate(-50%,-50%) scale(1); pointer-events: auto; }
+		.popup .popup-message{ font-size: 1rem; color: #222; margin-bottom: 10px; }
+		.popup .popup-actions{ text-align: right; }
+		.popup .popup-actions button{ background: transparent; border: none; color: #2b2b2b; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+		.popup.success{ border-left: 6px solid #43a047; }
+		.popup.error{ border-left: 6px solid #e53935; }
+		body.popup-open{ overflow: hidden; }
 	</style>
 </head>
 <body>
@@ -293,5 +322,17 @@
 			</form>
 		</div>
 	</div>
+
+	<!-- popup elements -->
+	<div id="popupBackdrop" class="popup-backdrop" onclick="hidePopup()"></div>
+	<div id="jsPopup" class="popup" role="status" aria-live="polite">
+		<div class="popup-message"></div>
+		<div class="popup-actions"><button id="popupClose" type="button">OK</button></div>
+	</div>
+
+	<script>
+	// wire close button
+	document.getElementById('popupClose').addEventListener('click', hidePopup);
+	</script>
 </body>
 </html>
