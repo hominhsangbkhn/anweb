@@ -99,7 +99,38 @@
 			});
 		}
 		function isImagePath(p){ if(!p) return false; p = p.toLowerCase(); return exts.some(e=>p.endsWith(e)); }
-		function makeImageEl(src){ const div=document.createElement('div'); div.className='card'; const img=document.createElement('img'); img.src=src; img.alt='image'; img.loading='lazy'; img.onclick=()=>showViewer(src); div.appendChild(img); return div; }
+		function makeImageEl(src){
+			const div = document.createElement('div');
+			div.className = 'card';
+			const img = document.createElement('img');
+			img.alt = 'image';
+			img.loading = 'lazy';
+			img.onclick = () => showViewer(img.src);
+
+			// Resolve to the GitHub raw URL when the source points to the local assets folder
+			let rawUrl = null;
+			try{
+				const parts = src.split('/');
+				const filename = parts[parts.length-1] || src;
+				rawUrl = `https://raw.githubusercontent.com/hominhsangbkhn/anweb/main/assets/${encodeURIComponent(filename)}`;
+			}catch(e){ rawUrl = null; }
+
+			let triedLocal = false;
+			img.onerror = () => {
+				// if rawUrl was used first, fall back to local path; otherwise hide
+				if(!triedLocal && rawUrl){
+					triedLocal = true;
+					img.src = src; // try original local asset
+					return;
+				}
+				img.style.display = 'none';
+			};
+
+			// Prefer raw GitHub URL (matches your example). If raw fails, onerror will try local.
+			img.src = rawUrl || src;
+			div.appendChild(img);
+			return div;
+		}
 		function showViewer(src){ const v=document.getElementById('viewer'); document.getElementById('viewerImg').src=src; v.style.display='flex'; v.setAttribute('aria-hidden','false'); spawnHearts(10); }
 		function hideViewer(){ const v=document.getElementById('viewer'); v.style.display='none'; v.setAttribute('aria-hidden','true'); document.getElementById('viewerImg').src=''; }
 
