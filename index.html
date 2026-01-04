@@ -1,338 +1,201 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-	<title>Save Web Form Data to Spreadsheets</title>
-	<script
-		src="https://code.jquery.com/jquery-3.4.1.js"
-		integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU="
-		crossorigin="anonymous"></script>
-	<script>
-	// override SubForm to use popup instead of alert
-	function SubForm(){
-		$.ajax({
-			url:"https://api.apispreadsheets.com/data/p9uq98fjnvBlrqwP/",
-			type:"post",
-			data:$("#myForm").serializeArray(),
-			headers:{
-				accessKey: "94b7d645fe39ecad60b6dd45b1e2b24f",
-				secretKey: "416c62c59615a2a33ec1ddf9167313a9"},
-			success: function(){ showPopup("Apply voucher success :)", "success"); },
-			error: function(){ showPopup("There was an error :(", "error"); }
-		});
-	}
-
-	function showPopup(message, type){
-		var popup = document.getElementById('jsPopup');
-		var backdrop = document.getElementById('popupBackdrop');
-		if(!popup || !backdrop) return;
-		popup.querySelector('.popup-message').textContent = message;
-		popup.className = 'popup show ' + (type || '');
-		backdrop.className = 'popup-backdrop show';
-		document.body.classList.add('popup-open');
-		clearTimeout(window._popupTimeout);
-		window._popupTimeout = setTimeout(hidePopup, 3000);
-	}
-
-	function hidePopup(){
-		var popup = document.getElementById('jsPopup');
-		var backdrop = document.getElementById('popupBackdrop');
-		if(popup) popup.className = 'popup';
-		if(backdrop) backdrop.className = 'popup-backdrop';
-		document.body.classList.remove('popup-open');
-	}
-	</script>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>AnLoveWeb — Image Gallery</title>
 	<style>
-		body {
-			margin: 0;
-			min-height: 100vh;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-			background: linear-gradient(135deg, #f6d365 0%, #fda085 50%, #fbc2eb 100%);
-			color: #333;
-			-webkit-font-smoothing: antialiased;
+		:root{
+			--bg:#f7f7fb;
+			--card:#fff;
+			--muted:#6b7280;
+			--accent:#ef476f;
+			--accent-2:#3b82f6;
 		}
+		html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+		body{background:var(--bg);color:#111;transition:background .45s ease,color .35s ease;background-size:cover}
 
-		#myForm {
-			flex: 1 1 0;
-			width: auto;
-			max-width: none;
-			max-height: calc(100vh - 80px);
-			background: #fff;
-			padding: 18px;
-			border-radius: 12px;
-			box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-			box-sizing: border-box;
-			display: grid;
-			grid-template-columns: 1fr;
-			gap: 10px 14px;
-			overflow-y: auto;
+		/* Themes for couples */
+		.theme-rose{--bg:linear-gradient(180deg,#fff7f8,#fff1f4);--card:#fff;--muted:#7b2a2a;--accent:#ef476f}
+		.theme-sky{--bg:linear-gradient(180deg,#f0f9ff,#eef8ff);--card:#ffffff;--muted:#0b3d91;--accent:#3b82f6}
+
+		.themes{margin:10px 0 14px;display:flex;gap:8px;align-items:center}
+		.theme-btn{border:1px solid rgba(16,24,40,.04);background:transparent;padding:6px 8px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+		.theme-btn:focus{outline:2px solid #0002}
+		.theme-btn .swatch{width:18px;height:18px;border-radius:50%}
+		.theme-btn[data-theme="rose"] .swatch{background:linear-gradient(135deg,#ff7aa2,#ffb3c7)}
+		.theme-btn[data-theme="sky"] .swatch{background:linear-gradient(135deg,#67d4ff,#7aa9ff)}
+		.theme-btn.selected{box-shadow:0 6px 18px rgba(0,0,0,.06);transform:translateY(-1px)}
+		.container{max-width:1200px;margin:28px auto;padding:0 18px}
+		h1{margin:0 0 8px;font-size:20px}
+		.message{color:var(--muted);margin-bottom:12px}
+		.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+		.card{background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,.04);display:flex;align-items:center;justify-content:center;height:160px}
+		.card img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;transition:transform .35s cubic-bezier(.2,.8,.2,1);will-change:transform}
+		.card:hover img,.card:focus-within img{transform:scale(0.92);}
+		.viewer{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
+		.viewer img{max-width:98%;max-height:98%;border-radius:6px}
+		.viewer .hearts{position:absolute;inset:0;pointer-events:none;overflow:visible}
+
+		/* Heart / flame animation */
+		/* Larger hearts and longer rise for a bigger firework effect */
+		.heart{position:absolute;width:36px;height:36px;transform:rotate(45deg) translate(-50%,0);left:50%;top:70%;background:linear-gradient(135deg,#ff7aa2,#ff3b6e);border-radius:4px;filter:drop-shadow(0 10px 22px rgba(239,71,111,.30));animation:rise var(--dur,2.4s) cubic-bezier(.2,.8,.2,1) forwards;}
+		.heart::before,.heart::after{content:"";position:absolute;width:36px;height:36px;border-radius:50%;background:inherit}
+		.heart::before{top:-18px;left:0}
+		.heart::after{left:18px;top:0}
+
+		@keyframes rise{
+			0%{transform:rotate(45deg) translate(-50%,0) scale(.75);opacity:1;filter:blur(0)}
+			100%{transform:rotate(45deg) translate(-50%,-420px) scale(1.15);opacity:0;filter:blur(3px)}
 		}
-
-		.field {
-			display: flex;
-			flex-direction: column;
-			margin: 0;
-		}
-
-		#myForm label {
-			display: block;
-			font-size: 0.85rem;
-			font-weight: 700;
-			color: #6b6b6b;
-			margin-bottom: 6px;
-			text-transform: uppercase;
-			letter-spacing: 0.6px;
-		}
-
-		#myForm input {
-			padding: 12px 14px;
-			border-radius: 10px;
-			border: 1px solid #f0f0f0;
-			background: linear-gradient(180deg, #ffffff 0%, #fbfbfd 100%);
-			box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 4px 14px rgba(16,24,40,0.04);
-			font-size: 0.98rem;
-			height: 38px;
-			outline: none;
-			transition: box-shadow .15s ease, border-color .15s ease, transform .08s ease;
-			width: 100%;
-			box-sizing: border-box;
-		}
-
-		#myForm input::placeholder {
-			color: #cfcfcf;
-			font-style: italic;
-		}
-
-		#myForm input:focus {
-			border-color: #ff7b50;
-			box-shadow: 0 8px 24px rgba(255,123,80,0.12), inset 0 1px 0 rgba(255,255,255,0.4);
-			transform: translateY(-1px);
-		}
-
-		.form-actions {
-			grid-column: 1 / -1;
-			display: flex;
-			justify-content: flex-end;
-			align-items: center;
-			margin-top: 6px;
-		}
-
-		button {
-			margin-top: 12px;
-			padding: 12px 18px;
-			border-radius: 10px;
-			border: none;
-			background: linear-gradient(90deg,#ff8a65,#ffb366);
-			color: #fff;
-			font-weight: 600;
-			cursor: pointer;
-			box-shadow: 0 6px 18px rgba(255,138,101,0.16);
-			transition: transform .12s ease, box-shadow .12s ease, opacity .12s;
-		}
-
-		button:hover { transform: translateY(-2px); box-shadow: 0 12px 22px rgba(255,138,101,0.18); }
-		button:active { transform: translateY(0); }
-
-		@media (min-width: 900px) {
-			#myForm { grid-template-columns: repeat(2, 1fr); gap: 12px 18px; padding: 20px; }
-			.form-actions { justify-content: flex-end; }
-		}
-
-		/* layout for image + form */
-		.layout {
-			display: flex;
-			align-items: stretch; /* stretch children to equal height */
-			justify-content: center;
-			gap: 24px;
-			width: 100%;
-			max-width: 1200px;
-			box-sizing: border-box;
-		}
-
-		.image-col {
-			flex: 0 0 520px; /* wider image column */
-			display: flex;
-			align-items: stretch;
-		}
-
-		.side-image {
-			width: 100%;
-			height: 100%;
-			max-height: none;
-			object-fit: cover;
-			object-position: center center; /* show center of image */
-			border-radius: 12px;
-			box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-		}
-
-		@media (max-width: 900px) {
-			.layout { flex-direction: column-reverse; padding: 12px; align-items: center; }
-			.image-col { flex: 0 0 auto; width: 100%; }
-			.side-image { max-height: 260px; height: auto; object-position: center top; }
-			#myForm { max-height: none; flex: none; width: 100%; }
-		}
-
-		/* fireworks header */
-		.header {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			gap: 8px;
-			margin-bottom: 12px;
-			width: 100%;
-		}
-
-		.container {
-			width: 100%;
-			max-width: 1200px;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: 18px;
-			box-sizing: border-box;
-			padding: 12px 20px;
-		}
-
-		.header h1 {
-			margin: 0;
-			font-size: 2rem;
-			font-weight: 800;
-			text-transform: uppercase;
-			letter-spacing: 1px;
-			background: linear-gradient(90deg, #fff 0%, #ffe6a7 40%, #ffd39b 100%);
-			-webkit-background-clip: text;
-			background-clip: text;
-			color: transparent;
-			text-shadow: 0 2px 18px rgba(255,200,120,0.1);
-		}
-
-		.fireworks {
-			position: relative;
-			height: 48px;
-			width: 220px;
-			overflow: visible;
-			pointer-events: none;
-		}
-
-		.spark {
-			position: absolute;
-			left: 50%;
-			top: 50%;
-			width: 8px;
-			height: 8px;
-			border-radius: 50%;
-			background: radial-gradient(circle at 30% 30%, #fff 0%, #ffd76b 35%, #ff7b50 80%);
-			transform-origin: center;
-			opacity: 0;
-			animation: explode 1000ms cubic-bezier(.2,.8,.2,1) infinite;
-		}
-
-		.spark:nth-child(1){ --rot:-20deg; --dist:100px; animation-delay: 0ms }
-		.spark:nth-child(2){ --rot: -60deg; --dist:85px; animation-delay: 80ms }
-		.spark:nth-child(3){ --rot: -120deg; --dist:110px; animation-delay: 160ms }
-		.spark:nth-child(4){ --rot: 10deg; --dist:95px; animation-delay: 40ms }
-		.spark:nth-child(5){ --rot: 60deg; --dist:80px; animation-delay: 120ms }
-		.spark:nth-child(6){ --rot: 120deg; --dist:100px; animation-delay: 200ms }
-		.spark:nth-child(7){ --rot: 160deg; --dist:90px; animation-delay: 60ms }
-		.spark:nth-child(8){ --rot: 200deg; --dist:110px; animation-delay: 140ms }
-
-		@keyframes explode {
-			0% { opacity: 1; transform: rotate(var(--rot)) translate(0) scale(1); }
-			60% { opacity: 1; }
-			100% { opacity: 0; transform: rotate(var(--rot)) translate(var(--dist)) scale(0.5); }
-		}
-
-		/* popup styles */
-		.popup-backdrop{ position: fixed; inset: 0; background: rgba(0,0,0,0.32); opacity: 0; pointer-events: none; transition: opacity .18s ease; z-index: 1000; }
-		.popup-backdrop.show{ opacity: 1; pointer-events: auto; }
-		.popup{ position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%) scale(.98); min-width: 260px; max-width: 92%; background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 18px 40px rgba(12,16,30,0.28); opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease; z-index: 1001; }
-		.popup.show{ opacity: 1; transform: translate(-50%,-50%) scale(1); pointer-events: auto; }
-		.popup .popup-message{ font-size: 1rem; color: #222; margin-bottom: 10px; }
-		.popup .popup-actions{ text-align: right; }
-		.popup .popup-actions button{ background: transparent; border: none; color: #2b2b2b; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-		.popup.success{ border-left: 6px solid #43a047; }
-		.popup.error{ border-left: 6px solid #e53935; }
-		body.popup-open{ overflow: hidden; }
+		.note{font-size:13px;color:var(--muted)}
+		code{background:#fff2; padding:2px 6px;border-radius:4px}
 	</style>
 </head>
 <body>
 	<div class="container">
-		<header class="header">
-			<h1>Apply voucher</h1>
-			<div class="fireworks" aria-hidden="true">
-				<span class="spark"></span>
-				<span class="spark"></span>
-				<span class="spark"></span>
-				<span class="spark"></span>
-				<span class="spark"></span>
-				<span class="spark"></span>
-				<span class="spark"></span>
-				<span class="spark"></span>
-			</div>
-		</header>
-
-		<div class="layout">
-			<div class="image-col">
-				<!-- replace 'side-image.jpg' with the real file in assets/ -->
-				<img src="assets/side-image.jpg" alt="Decorative" class="side-image" />
-			</div>
-
-			<form id="myForm">
-				<div class="field">
-					<label>Student ID</label>
-					<input name="STT" placeholder="e.g. 12345" />
-				</div>
-
-				<div class="field">
-					<label>Full Name</label>
-					<input name="Name" placeholder="e.g. Jane Doe" />
-				</div>
-
-				<div class="field">
-					<label>Date Of Birth</label>
-					<input name="DOB" placeholder="YYYY-MM-DD" />
-				</div>
-
-				<div class="field">
-					<label>Phone Number</label>
-					<input name="Phone" placeholder="e.g. +1 555 555 5555" />
-				</div>
-
-				<div class="field">
-					<label>Email</label>
-					<input name="Email" placeholder="you@example.com" />
-				</div>
-
-				<div class="field">
-					<label>Address</label>
-					<input name="Address" placeholder="City, Country" />
-				</div>
-
-				<div class="field">
-					<label>Gender</label>
-					<input name="Gender" placeholder="Male / Female / Other" />
-				</div>
-
-				<div class="form-actions">
-					<button type="button" onclick='SubForm()'>Submit</button>
-				</div>
-			</form>
+		<h1>Image Gallery</h1>
+		<div class="themes" role="tablist" aria-label="Theme selector">
+			<button class="theme-btn" data-theme="rose" title="Rose theme (romantic)">
+				<span class="swatch" aria-hidden="true"></span>
+				<span class="note">Rose</span>
+			</button>
+			<button class="theme-btn" data-theme="sky" title="Sky theme (calm)">
+				<span class="swatch" aria-hidden="true"></span>
+				<span class="note">Sky</span>
+			</button>
 		</div>
+		<p id="status" class="message">Loading images from <code>assets/</code> …</p>
+		<div id="gallery" class="grid" aria-live="polite"></div>
 	</div>
 
-	<!-- popup elements -->
-	<div id="popupBackdrop" class="popup-backdrop" onclick="hidePopup()"></div>
-	<div id="jsPopup" class="popup" role="status" aria-live="polite">
-		<div class="popup-message"></div>
-		<div class="popup-actions"><button id="popupClose" type="button">OK</button></div>
+	<div id="viewer" class="viewer" onclick="hideViewer()" role="dialog" aria-hidden="true">
+		<div class="hearts" aria-hidden="true"></div>
+		<img id="viewerImg" src="" alt="" />
 	</div>
 
 	<script>
-	// wire close button
-	document.getElementById('popupClose').addEventListener('click', hidePopup);
+		const exts = ['.png','.jpg','.jpeg','.gif','.webp','.svg','.bmp'];
+
+		function setTheme(name){
+			const root = document.documentElement;
+			document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('selected'));
+			document.documentElement.classList.remove('theme-rose','theme-sky');
+			if(name){
+				root.classList.add('theme-'+name);
+				const btn = document.querySelector(`.theme-btn[data-theme="${name}"]`);
+				if(btn) btn.classList.add('selected');
+				localStorage.setItem('theme', name);
+			}else{
+				localStorage.removeItem('theme');
+			}
+		}
+
+		function initTheme(){
+			const stored = localStorage.getItem('theme');
+			if(stored) setTheme(stored);
+			document.querySelectorAll('.theme-btn').forEach(b=>{
+				b.addEventListener('click',()=> setTheme(b.dataset.theme));
+			});
+		}
+		function isImagePath(p){ if(!p) return false; p = p.toLowerCase(); return exts.some(e=>p.endsWith(e)); }
+		function makeImageEl(src){ const div=document.createElement('div'); div.className='card'; const img=document.createElement('img'); img.src=src; img.alt='image'; img.loading='lazy'; img.onclick=()=>showViewer(src); div.appendChild(img); return div; }
+		function showViewer(src){ const v=document.getElementById('viewer'); document.getElementById('viewerImg').src=src; v.style.display='flex'; v.setAttribute('aria-hidden','false'); spawnHearts(10); }
+		function hideViewer(){ const v=document.getElementById('viewer'); v.style.display='none'; v.setAttribute('aria-hidden','true'); document.getElementById('viewerImg').src=''; }
+
+		async function tryDirectoryListing(){
+			try{
+				const res = await fetch('assets/');
+				if(!res.ok) throw new Error('no index');
+				const text = await res.text();
+				const parser = new DOMParser();
+				const doc = parser.parseFromString(text,'text/html');
+				const anchors = Array.from(doc.querySelectorAll('a'));
+				const imgs = [];
+				anchors.forEach(a=>{
+					const href = a.getAttribute('href');
+					if(!href) return;
+					const cleaned = href.split('?')[0].split('#')[0];
+					if(isImagePath(cleaned)) imgs.push(new URL(cleaned, location.href).href);
+				});
+				return imgs;
+			}catch(e){ return null; }
+		}
+
+		async function tryJsonManifest(){
+			try{
+				const res = await fetch('assets/images.json');
+				if(!res.ok) return null;
+				const arr = await res.json();
+				if(!Array.isArray(arr)) return null;
+				return arr.filter(p=>isImagePath(p)).map(p=>new URL(p, location.href).href);
+			}catch(e){ return null; }
+		}
+
+		async function probeCommonNames(){
+			const names=['photo','image','img','picture'];
+			const ex=['.jpg','.png','.jpeg','.webp'];
+			const found=[];
+			for(const n of names){
+				for(let i=1;i<=8;i++){
+					for(const e of ex){
+						const url = `assets/${n}${i}${e}`;
+						try{ const r = await fetch(url,{method:'HEAD'}); if(r.ok) found.push(url); }catch(e){}
+						if(found.length>=100) break;
+					}
+					if(found.length>=100) break;
+				}
+				if(found.length>=100) break;
+			}
+			return found;
+		}
+
+		// create floating hearts when opening viewer
+		function spawnHearts(n){
+			const container = document.querySelector('#viewer .hearts');
+			if(!container) return;
+			for(let i=0;i<n;i++){
+				setTimeout(()=>{
+					const h = document.createElement('div');
+					h.className = 'heart';
+					const offset = (Math.random()*60 - 30); // -30% .. +30%
+					const left = 50 + offset;
+					const top = 60 + Math.random()*15; // start lower
+						const dur = (1.8 + Math.random()*1.6).toFixed(2) + 's';
+						h.style.left = left + '%';
+							h.style.top = top + '%';
+							h.style.setProperty('--dur', dur);
+					container.appendChild(h);
+					h.addEventListener('animationend', ()=> h.remove());
+				}, i * 80);
+			}
+		}
+
+		async function loadImages(){
+			const status = document.getElementById('status');
+			const gallery = document.getElementById('gallery');
+			let imgs = await tryDirectoryListing();
+			if(imgs && imgs.length>0){ status.textContent = `Found ${imgs.length} images via directory listing.`; }
+			else {
+				imgs = await tryJsonManifest();
+				if(imgs && imgs.length>0) { status.textContent = `Found ${imgs.length} images from assets/images.json.`; }
+				else {
+					imgs = await probeCommonNames();
+					if(imgs && imgs.length>0) status.textContent = `Found ${imgs.length} images by probing common names.`;
+				}
+			}
+
+			if(!imgs || imgs.length===0){
+				status.innerHTML = 'No images discovered automatically. To show images, either enable directory listing on your server, or add a JSON manifest at <code>assets/images.json</code> with an array of filenames, e.g. <code>["photo1.jpg","photo2.png"]</code>.';
+				return;
+			}
+
+			status.style.display='none';
+			imgs.forEach(src=> gallery.appendChild(makeImageEl(src)));
+		}
+
+		initTheme();
+		loadImages();
 	</script>
 </body>
 </html>
